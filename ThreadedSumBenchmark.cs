@@ -1,4 +1,5 @@
 ﻿using BenchmarkDotNet.Attributes;
+using ThreadedArraySum;
 
 namespace ThreadingTest
 {
@@ -31,6 +32,44 @@ namespace ThreadingTest
         public void MultithreadedSumTasksBenchmark()
         {
             SumComputeThread.MultithreadedSumTasks(array, threadCount);
+        }
+    }
+
+    public class BinaryThreadedSumBenchmark
+    {
+        public int[] array;
+
+        [Params(1000000)] // 1 mil
+        public int n { get; set; }
+
+        [Params(1, 2, 4, 8, 16)]
+        public int threadCount { get; set; }
+
+        private ThreadedBinaryArraySumComputer comp;
+
+        [GlobalSetup]
+        public void Setup()
+        {
+            array = new int[n];
+            Array.Fill(array, 1);
+        }
+
+        [IterationSetup]
+        public void IterationSetup()
+        {
+            comp = new ThreadedBinaryArraySumComputer(threadCount);
+        }
+
+        [Benchmark]
+        public void ThreadsBenchmark()
+        {
+            comp.Compute(array);
+        }
+
+        [Benchmark]
+        public void ThreadedBinaryArraySumComputerBenchmark2()
+        {
+            ThreadedBinaryArraySumComputer.TasksSum(array);
         }
     }
 }

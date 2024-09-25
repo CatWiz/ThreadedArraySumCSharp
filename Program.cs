@@ -1,5 +1,6 @@
 ﻿using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Numerics;
+using ThreadedArraySum;
 
 namespace ThreadingTest
 {
@@ -39,34 +40,30 @@ namespace ThreadingTest
 
             if (input == "1")
             {
-                int N = 1000000000;
-                Console.WriteLine($"Generating array of size {N}");
+                int n = Convert.ToInt32(1e6);
+                Console.WriteLine($"Generating array of {n} elements...");
+                int[] array = new int[n];
+                Array.Fill(array, 1);
 
-                int[] array = new int[N];
-                Random rng = new();
-                for (int i = 0; i < N; i++)
-                    array[i] = rng.Next(1, 100);
-
-
-                Console.WriteLine("Enter number of threads:");
+                Console.WriteLine("Enter thread count:");
                 int threadCount;
                 while (!ValidateThreadCount(Console.ReadLine(), out threadCount))
                 {
-                    Console.WriteLine("Invalid input. Please enter a valid number of threads:");
+                    Console.WriteLine("Invalid thread count. Enter a positive integer:");
                 }
 
-                int time = Environment.TickCount;
-                //BigInteger sum = SumComputeThread.MultithreadedSum(array, threadCount);
-                Int64 sum = SumComputeThread.MultithreadedSumTasks(array, threadCount);
-                int elapsed = Environment.TickCount - time;
+                ThreadedBinaryArraySumComputer sumComputer = new(threadCount);
 
-                Console.WriteLine($"Sum computed by all threads: {sum}");
-                Console.WriteLine($"Time elapsed: {elapsed} ms");
+                int time = Environment.TickCount;
+                int sum = sumComputer.Compute(array);
+                time = Environment.TickCount - time;
+                Console.WriteLine($"Sum: {sum}");
+                Console.WriteLine($"Time: {time}ms");
             }
             else if (input == "2")
             {
                 // Benchmark Result: https://files.catbox.moe/1gpx63.png
-                BenchmarkDotNet.Running.BenchmarkRunner.Run<ThreadedSumBenchmark>();
+                BenchmarkDotNet.Running.BenchmarkRunner.Run<BinaryThreadedSumBenchmark>();
             }
             else
             {
