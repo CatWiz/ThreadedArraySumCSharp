@@ -50,7 +50,7 @@ namespace ThreadedArraySum
         public int Compute(int[] targetArray)
         {
             int[] arrCopy = new int[targetArray.Length];
-            Array.Copy(targetArray, targetArray, targetArray.Length);
+            Array.Copy(targetArray, arrCopy, targetArray.Length);
 
             for (int i = 0; i < ThreadCount; i++)
             {
@@ -86,7 +86,7 @@ namespace ThreadedArraySum
                 _threadData[i].shouldExit = true;
                 _threads[i].Join();
             }
-            return targetArray[0];
+            return arrCopy[0];
         }
 
         public static int SingleThreadSum(int[] array)
