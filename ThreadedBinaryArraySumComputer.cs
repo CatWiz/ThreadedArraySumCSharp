@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Perfolizer.Horology;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -13,26 +14,31 @@ namespace ThreadedArraySum
             public int[] targetArray;
             public int index1;
             public int index2;
-            public bool doesWork = false;
+            public long workingStatus = 0; // 0 - not working, 1 - working
+            public object lockObject = new();
             public bool shouldExit = false;
 
             public void Process()
             {
                 while (true)
                 {
-                    if (doesWork)
+                    lock (lockObject)
                     {
+                        while (workingStatus == 0 && !shouldExit)
+                            Monitor.Wait(lockObject);
+                        if (shouldExit)
+                            break;
+
                         targetArray[index1] += targetArray[index2];
-                        doesWork = false;
+                        workingStatus = 0;
                     }
-                    if (shouldExit)
-                        break;
                 }
             }
         }
         public readonly int ThreadCount;
         private readonly ThreadData[] _threadData;
         private readonly Thread[] _threads;
+        private bool started = false;
         public ThreadedBinaryArraySumComputer(int threadCount)
         {
             ThreadCount = threadCount;
@@ -47,16 +53,26 @@ namespace ThreadedArraySum
             }
         }
 
+        public void StartThreads()
+        {
+            for (int i = 0; i < ThreadCount; i++)
+            {
+                _threads[i].Start();
+            }
+            started = true;
+        }
+
         public int Compute(int[] targetArray)
         {
+            if (!started)
+                StartThreads();
+
             int[] arrCopy = new int[targetArray.Length];
             Array.Copy(targetArray, arrCopy, targetArray.Length);
 
             for (int i = 0; i < ThreadCount; i++)
             {
-                var threadData = _threadData[i];
-                threadData.targetArray = arrCopy;
-                _threads[i].Start();
+                _threadData[i].targetArray = arrCopy;
             }
 
             int n = targetArray.Length;
@@ -65,28 +81,42 @@ namespace ThreadedArraySum
                 int threadIndex = 0;
                 for (int i = 0; i < n / 2; i++)
                 {
-                    while (_threadData[threadIndex].doesWork)
+                    while (Interlocked.Read(ref _threadData[threadIndex].workingStatus) != 0)
                     {
                         threadIndex = (threadIndex + 1) % ThreadCount;
                     }
 
-                    _threadData[threadIndex].index1 = i;
-                    _threadData[threadIndex].index2 = n - i - 1;
-                    _threadData[threadIndex].doesWork = true;
+                    var threadData = _threadData[threadIndex];
+                    lock (threadData.lockObject)
+                    {
+                        threadData.index1 = i;
+                        threadData.index2 = n - i - 1;
+                        threadData.workingStatus = 1;
+                        Monitor.Pulse(threadData.lockObject);
+                    }
                 }
 
                 foreach (var threadData in _threadData)
-                    while (threadData.doesWork);
+                {
+                    while (Interlocked.Read(ref threadData.workingStatus) != 0) { }
+                }
 
                 n = (n + 1) / 2;
             }
+            
+            return arrCopy[0];
+        }
 
+        public void Shutdown()
+        {
             for (int i = 0; i < ThreadCount; i++)
             {
                 _threadData[i].shouldExit = true;
+                lock (_threadData[i].lockObject)
+                    Monitor.Pulse(_threadData[i].lockObject);
+
                 _threads[i].Join();
             }
-            return arrCopy[0];
         }
 
         public static int SingleThreadSum(int[] array)
@@ -127,6 +157,5 @@ namespace ThreadedArraySum
             }
             return arr[0];
         }
-
     }
 }

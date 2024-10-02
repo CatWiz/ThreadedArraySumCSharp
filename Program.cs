@@ -59,6 +59,8 @@ namespace ThreadingTest
                 time = Environment.TickCount - time;
                 Console.WriteLine($"Sum: {sum}");
                 Console.WriteLine($"Time: {time}ms");
+                
+                sumComputer.Shutdown();
             }
             else if (input == "2")
             {
